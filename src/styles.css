@@ -1,0 +1,156 @@
+:root {
+  --bg: #1f1f1f;
+  --panel: #2a2a2a;
+  --border: #3a3a3a;
+  --text: #f0f0f0;
+  --muted: #9aa0a6;
+  --accent: #6ca0f6;
+  --err: #ff7b72;
+  --view-size: 150px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, "Segoe UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP",
+    sans-serif;
+  line-height: 1.5;
+}
+
+main {
+  padding: 1.5rem 1.5rem 4rem;
+}
+
+/* ── キューブ種別セクション（トップ）── */
+.group {
+  margin-top: 2rem;
+}
+
+.group:first-child {
+  margin-top: 0.5rem;
+}
+
+.group h2 {
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.3rem;
+  font-size: 1.3rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── 段階のリンクカード ── */
+.stage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.stage-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.85rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.15s ease, transform 0.05s ease;
+}
+
+.stage-card:hover {
+  border-color: var(--accent);
+}
+
+.stage-card:active {
+  transform: translateY(1px);
+}
+
+.stage-name {
+  font-weight: 600;
+}
+
+.stage-count {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* ── 段階の詳細（alg 一覧）── */
+.breadcrumb {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.breadcrumb a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb .sep {
+  margin: 0 0.4rem;
+}
+
+.stage-title {
+  margin: 0 0 1rem;
+  padding-bottom: 0.3rem;
+  font-size: 1.3rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.alg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.alg-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.puzzle-view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.puzzle-view svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.puzzle-view.err {
+  color: var(--err);
+  font-size: 0.75rem;
+  text-align: center;
+  word-break: break-word;
+}
+
+.alg-name {
+  font-weight: 600;
+  text-align: center;
+}
+
+.alg-moves {
+  font-family: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: center;
+  word-break: break-word;
+}
