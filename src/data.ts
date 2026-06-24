@@ -21,8 +21,25 @@
 //   任意指定も可: { U: [0, 2, 6, 8] }
 // ============================================================================
 
-import { Type, Masks } from "sr-puzzlegen";
+import { Type, Masks, Colors } from "sr-puzzlegen";
 import type { PuzzleGroup } from "./types";
+
+// megaminx 配色: 白を底面(d)に、最終層(上面 U)はグレー。
+// 他10面は puzzle-gen の既定のまま（scheme はシャローマージのため全面指定が必要）。
+const megaminxScheme = {
+  U: Colors.GREY, // 最終層（上面）: 白 → グレー
+  F: Colors.RED,
+  R: Colors.BLUE,
+  dr: Colors.PINK,
+  dl: Colors.LIGHT_YELLOW,
+  L: Colors.GREEN,
+  d: Colors.WHITE, // 底面: グレー → 白
+  br: Colors.LIGHT_GREEN,
+  BR: Colors.YELLOW,
+  BL: Colors.PURPLE,
+  bl: Colors.DARK_BLUE,
+  b: Colors.ORANGE,
+};
 
 export const puzzleGroups: PuzzleGroup[] = [
   {
@@ -86,15 +103,35 @@ export const puzzleGroups: PuzzleGroup[] = [
     id: "megaminx",
     name: "Megaminx",
     stages: [
+      // megaminx は素の D 単独は不可。R / U 系（R++ / D-- 等の Pochmann 記法も可）
       {
-        id: "ll",
-        name: "最終層",
+        id: "eoll",
+        name: "EOLL",
         type: Type.MEGAMINX_TOP,
+        scheme: megaminxScheme,
         algs: [
-          // megaminx は素の D 単独は不可。R / U 系（R++ / D-- 等の Pochmann 記法も可）
-          { name: "例: 最終層", alg: "R' U2' R2 U R2' U R2 U2' R'" },
-          { name: "例: sexy", alg: "R U R' U'" },
-          // ↓ ここに自分の megaminx 手順を追加
+          { name: "F sexy F'", alg: "F R U R' U' F'" },
+          // ↓ ここに自分の EOLL を追加
+        ],
+      },
+      {
+        id: "coll",
+        name: "COLL",
+        type: Type.MEGAMINX_TOP,
+        scheme: megaminxScheme,
+        algs: [
+          { name: "Sune", alg: "R U R' U R U2 R'" },
+          // ↓ ここに自分の COLL を追加
+        ],
+      },
+      {
+        id: "epll",
+        name: "EPLL",
+        type: Type.MEGAMINX_TOP,
+        scheme: megaminxScheme,
+        algs: [
+          { name: "J perm", alg: "R U R' F' R U R' U' R' F R2 U' R' U'" },
+          // ↓ ここに自分の EPLL を追加
         ],
       },
     ],

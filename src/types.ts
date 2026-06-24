@@ -1,9 +1,13 @@
-import type { Type } from "sr-puzzlegen";
+import type { Type, PuzzleOptions } from "sr-puzzlegen";
 
 // 面ごとに「グレー化するステッカー番号」を並べたマスク。
 // 番号は各面 0〜8（cube）/ 0〜10（megaminx）の行優先。
 // 例: { U: [0, 2, 6, 8] } → U 面の四隅をグレーに。
 export type StickerMask = { [face: string]: number[] };
+
+// 面ID → 色 の配色（VisualCube の sch 相当）。puzzle-gen の既定を上書きする。
+// megaminx はシャローマージのため指定する場合は全面分を渡すこと。
+export type ColorScheme = NonNullable<PuzzleOptions["scheme"]>;
 
 export interface AlgItem {
   name: string;
@@ -21,6 +25,8 @@ export interface Stage {
   type: Type;
   // 段階共通のマスク（VisualCube の stage 相当）。Masks.CUBE_3.OLL 等。
   mask?: StickerMask;
+  // 配色の上書き（省略時は puzzle-gen 既定）。
+  scheme?: ColorScheme;
   // cube の N（4x4 なら 4）。省略時は 3。
   puzzleSize?: number;
   algs: AlgItem[];

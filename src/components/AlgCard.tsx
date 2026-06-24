@@ -8,6 +8,7 @@ export function AlgCard({ item, stage }: { item: AlgItem; stage: Stage }) {
         type={stage.type}
         alg={item.alg}
         mask={item.mask ?? stage.mask}
+        scheme={stage.scheme}
         puzzleSize={stage.puzzleSize}
       />
       <div className="alg-name">{item.name}</div>
