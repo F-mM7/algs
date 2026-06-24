@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>描画方式 比較 — My Algs</title>
+    <style>
+      :root {
+        --bg: #1f1f1f;
+        --panel: #2a2a2a;
+        --border: #3a3a3a;
+        --text: #f0f0f0;
+        --muted: #9aa0a6;
+        --accent: #6ca0f6;
+        --ok: #7ee787;
+        --err: #ff7b72;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, "Segoe UI", "Noto Sans JP", sans-serif;
+        line-height: 1.5;
+      }
+      header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); }
+      h1 { margin: 0.2rem 0; font-size: 1.4rem; }
+      .lead { color: var(--muted); font-size: 0.9rem; margin: 0.3rem 0 0; }
+      #load-status { margin: 0.6rem 1.5rem 0; font-size: 0.85rem; }
+      .ok { color: var(--ok); }
+      .bad { color: var(--err); }
+      main { padding: 0.5rem 1.5rem 4rem; }
+      .case { margin-top: 2rem; }
+      .case h2 {
+        font-size: 1.05rem;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.3rem;
+        margin: 0 0 0.2rem;
+      }
+      .case .moves {
+        font-family: ui-monospace, "Consolas", monospace;
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin: 0 0 0.8rem;
+      }
+      .row { display: flex; flex-wrap: wrap; gap: 1rem; }
+      .card {
+        width: 190px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.6rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      .card .lbl { font-weight: 600; font-size: 0.82rem; text-align: center; }
+      .card .sub { font-size: 0.72rem; color: var(--muted); text-align: center; }
+      .card .view {
+        width: 160px;
+        height: 160px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      .card .view img,
+      .card .view svg { max-width: 160px; max-height: 160px; }
+      .card .err { color: var(--err); font-size: 0.72rem; text-align: center; word-break: break-word; }
+      twisty-player { width: 160px; height: 160px; }
+      .legend {
+        margin-top: 2.5rem;
+        padding: 1rem 1.2rem;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-size: 0.85rem;
+      }
+      .legend h3 { margin: 0.2rem 0 0.5rem; }
+      .legend ul { margin: 0.2rem 0 0.8rem; padding-left: 1.2rem; }
+      .legend code { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>描画方式 比較</h1>
+      <p class="lead">
+        同じ手順を各ライブラリ・各ビューで「認識図（解く前の状態 = case）」として描画しています。見比べて方式を選んでください。
+      </p>
+    </header>
+    <div id="load-status">ライブラリ読み込み中…</div>
+    <main id="app"></main>
+
+    <script type="module">
+      // ── 描画ライブラリを動的読み込み（片方が失敗しても他方は動くように個別 try）──
+      const status = document.getElementById("load-status");
+      const app = document.getElementById("app");
+      let pg = null; // sr-puzzlegen
+      let twisty = null; // cubing.js
+      const notes = [];
+
+      try {
+        pg = await import("https://esm.sh/sr-puzzlegen@1.0.4");
+        notes.push('<span class="ok">puzzle-gen OK</span>');
+      } catch (e) {
+        notes.push('<span class="bad">puzzle-gen 読み込み失敗: ' + e + "</span>");
+      }
+      try {
+        twisty = await import("https://cdn.cubing.net/v0/js/cubing/twisty");
+        notes.push('<span class="ok">cubing.js OK</span>');
+      } catch (e) {
+        notes.push('<span class="bad">cubing.js 読み込み失敗: ' + e + "</span>");
+      }
+      status.innerHTML = notes.join(" &nbsp;/&nbsp; ");
+
+      // ── ユーティリティ ──────────────────────────────────────────────
+      // 手順を逆適用した「認識図」を cubing.js に渡すため、手順を反転する。
+      // (R2 と R2' は同手なので末尾 ' のトグルで全記法を正しく反転できる)
+      function invertAlg(alg) {
+        return alg
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((t) => (t.endsWith("'") ? t.slice(0, -1) : t + "'"))
+          .reverse()
+          .join(" ");
+      }
+
+      function visualcubeURL({ pzl = 3, view, stage, alg, size = 160, bg = "2a2a2a" }) {
+        const p = new URLSearchParams();
+        p.set("fmt", "svg");
+        p.set("size", String(size));
+        p.set("bg", bg);
+        p.set("pzl", String(pzl));
+        if (view) p.set("view", view);
+        if (stage) p.set("stage", stage);
+        p.set("case", alg); // 解く前の状態（認識図）
+        return "https://visualcube.api.cubing.net/visualcube.php?" + p.toString();
+      }
+
+      // ── 各方式の描画関数（失敗はカード内にエラー表示）──────────────────
+      function renderVisualCube(view, cfg) {
+        const img = document.createElement("img");
+        img.src = visualcubeURL(cfg);
+        img.alt = "";
+        img.loading = "lazy";
+        img.onerror = () => {
+          view.innerHTML = '<div class="err">画像取得失敗</div>';
+        };
+        view.appendChild(img);
+      }
+
+      function renderPuzzleGen(view, type, alg, extra) {
+        if (!pg || !type) {
+          view.innerHTML = '<div class="err">puzzle-gen 未読み込み</div>';
+          return;
+        }
+        pg.SVG(view, type, {
+          width: 160,
+          height: 160,
+          puzzle: Object.assign({ case: alg }, extra || {}),
+        });
+      }
+
+      function renderTwisty(view, puzzle, alg, visualization) {
+        if (!twisty) {
+          view.innerHTML = '<div class="err">cubing.js 未読み込み</div>';
+          return;
+        }
+        const player = new twisty.TwistyPlayer({
+          puzzle,
+          experimentalSetupAlg: invertAlg(alg),
+          controlPanel: "none",
+          background: "none",
+          hintFacelets: "none",
+          visualization,
+        });
+        player.style.width = "160px";
+        player.style.height = "160px";
+        view.appendChild(player);
+      }
+
+      // ── 比較対象の手順 ─────────────────────────────────────────────
+      const cubeCases = [
+        { title: "PLL — T perm", alg: "R U R' U' R' F R2 U' R' U' R U R' F'", stage: "pll", view: "plan" },
+        { title: "OLL — Sune", alg: "R U R' U R U2 R'", stage: "oll", view: "plan" },
+        { title: "F2L — 基本", alg: "U R U' R'", stage: "f2l", view: undefined },
+      ];
+      const x4Case = {
+        title: "4x4 — OLL parity",
+        alg: "Rw U2 x Rw U2 Rw U2' Rw' U2 Lw U2 Rw' U2' Rw U2 Rw' U2' Rw'",
+      };
+      // megaminx は素の D が使えない記法のため R / U 系の手順を使用
+      const megaCases = [
+        { title: "Megaminx — LL 例", alg: "R' U2' R2 U R2' U R2 U2' R'" },
+        { title: "Megaminx — sexy", alg: "R U R' U'" },
+      ];
+
+      // ── セクション定義 ─────────────────────────────────────────────
+      const sections = [];
+
+      for (const c of cubeCases) {
+        sections.push({
+          title: c.title,
+          alg: c.alg,
+          cards: [
+            { label: "VisualCube", sub: (c.view || "iso") + " / stage=" + c.stage, render: (v) => renderVisualCube(v, { pzl: 3, view: c.view, stage: c.stage, alg: c.alg }) },
+            { label: "puzzle-gen", sub: "cube-top", render: (v) => renderPuzzleGen(v, pg && pg.Type.CUBE_TOP, c.alg) },
+            { label: "puzzle-gen", sub: "cube (3D)", render: (v) => renderPuzzleGen(v, pg && pg.Type.CUBE, c.alg) },
+            { label: "cubing.js", sub: "2D", render: (v) => renderTwisty(v, "3x3x3", c.alg, "2D") },
+            { label: "cubing.js", sub: "3D", render: (v) => renderTwisty(v, "3x3x3", c.alg, "3D") },
+          ],
+        });
+      }
+
+      // ── マスク（特定ステッカーのグレー化）デモ — VisualCube の stage 相当 ──
+      sections.push({
+        title: "★ マスク（特定ステッカーをグレー化）— puzzle-gen",
+        alg: "puzzle.mask に面ごとのステッカー番号を渡すと、その箇所を #404040 のグレーで描画（VisualCube の stage= 相当）",
+        cards: [
+          { label: "VisualCube", sub: "stage=oll（参考）", render: (v) => renderVisualCube(v, { pzl: 3, view: "plan", stage: "oll", alg: "R U R' U R U2 R'" }) },
+          { label: "puzzle-gen", sub: "OLL / マスク無し", render: (v) => renderPuzzleGen(v, pg && pg.Type.CUBE_TOP, "R U R' U R U2 R'") },
+          { label: "puzzle-gen", sub: "Masks.CUBE_3.OLL", render: (v) => renderPuzzleGen(v, pg && pg.Type.CUBE_TOP, "R U R' U R U2 R'", { mask: pg && pg.Masks.CUBE_3.OLL }) },
+          { label: "puzzle-gen", sub: "Masks.CUBE_3.F2L", render: (v) => renderPuzzleGen(v, pg && pg.Type.CUBE, "R U R' U' R U R' U'", { mask: pg && pg.Masks.CUBE_3.F2L }) },
+          { label: "puzzle-gen", sub: "任意指定 {U:[0,2,6,8]}", render: (v) => renderPuzzleGen(v, pg && pg.Type.CUBE_TOP, "", { mask: { U: [0, 2, 6, 8] } }) },
+          { label: "puzzle-gen", sub: "Masks.MEGA_3.OLL", render: (v) => renderPuzzleGen(v, pg && pg.Type.MEGAMINX_TOP, "R U R' U'", { mask: pg && pg.Masks.MEGA_3.OLL }) },
+        ],
+      });
+
+      sections.push({
+        title: x4Case.title,
+        alg: x4Case.alg,
+        cards: [
+          { label: "VisualCube", sub: "pzl=4", render: (v) => renderVisualCube(v, { pzl: 4, alg: x4Case.alg }) },
+          { label: "puzzle-gen", sub: "cube size=4", render: (v) => renderPuzzleGen(v, pg && pg.Type.CUBE, x4Case.alg, { size: 4 }) },
+          { label: "cubing.js", sub: "3D", render: (v) => renderTwisty(v, "4x4x4", x4Case.alg, "3D") },
+        ],
+      });
+
+      for (const c of megaCases) {
+        sections.push({
+          title: c.title,
+          alg: c.alg,
+          cards: [
+            { label: "VisualCube", sub: "非対応", render: (v) => { v.innerHTML = '<div class="err">megaminx 非対応</div>'; } },
+            { label: "puzzle-gen", sub: "megaminx-top", render: (v) => renderPuzzleGen(v, pg && pg.Type.MEGAMINX_TOP, c.alg) },
+            { label: "puzzle-gen", sub: "megaminx (3D)", render: (v) => renderPuzzleGen(v, pg && pg.Type.MEGAMINX, c.alg) },
+            { label: "puzzle-gen", sub: "megaminx-net", render: (v) => renderPuzzleGen(v, pg && pg.Type.MEGAMINX_NET, c.alg) },
+            { label: "cubing.js", sub: "3D", render: (v) => renderTwisty(v, "megaminx", c.alg, "3D") },
+          ],
+        });
+      }
+
+      // ── DOM 構築 ───────────────────────────────────────────────────
+      function makeCard(label, sub) {
+        const card = document.createElement("div");
+        card.className = "card";
+        const l = document.createElement("div");
+        l.className = "lbl";
+        l.textContent = label;
+        card.appendChild(l);
+        if (sub) {
+          const s = document.createElement("div");
+          s.className = "sub";
+          s.textContent = sub;
+          card.appendChild(s);
+        }
+        const v = document.createElement("div");
+        v.className = "view";
+        card.appendChild(v);
+        return { card, view: v };
+      }
+
+      for (const sec of sections) {
+        const wrap = document.createElement("section");
+        wrap.className = "case";
+        const h = document.createElement("h2");
+        h.textContent = sec.title;
+        wrap.appendChild(h);
+        const m = document.createElement("p");
+        m.className = "moves";
+        m.textContent = sec.alg;
+        wrap.appendChild(m);
+        const row = document.createElement("div");
+        row.className = "row";
+        for (const c of sec.cards) {
+          const { card, view } = makeCard(c.label, c.sub);
+          row.appendChild(card);
+          try {
+            c.render(view);
+          } catch (e) {
+            view.innerHTML = '<div class="err">' + String(e) + "</div>";
+          }
+        }
+        wrap.appendChild(row);
+        app.appendChild(wrap);
+      }
+
+      // ── 凡例 ───────────────────────────────────────────────────────
+      const legend = document.createElement("div");
+      legend.className = "legend";
+      legend.innerHTML = [
+        "<h3>各方式の特徴</h3>",
+        "<ul>",
+        "<li><b>VisualCube</b>（現行）: 外部画像API。<code>&lt;img&gt;</code> 1枚で軽量、OLL/PLL の plan ビューが綺麗。<b>megaminx 非対応</b>・外部サービス停止で図が消える。</li>",
+        "<li><b>puzzle-gen</b>: クライアント側 SVG 生成。cube/megaminx 両対応、<code>cube-top</code>/<code>megaminx-top</code> など認識図向きビューあり。外部サービス非依存。ライブラリは2022年以降更新停止。</li>",
+        "<li><b>cubing.js</b>: 公式・将来性高。megaminx 3D が良好、アニメ再生も可。プレイヤー型で1枚ごとに重め、2D は一部パズルのみ。</li>",
+        "</ul>",
+        "<p>※ 全カードとも「解く前の状態（認識図）」を表示。puzzle-gen / VisualCube は <code>case</code>、cubing.js は手順を反転して <code>experimentalSetupAlg</code> に設定。</p>",
+      ].join("");
+      app.appendChild(legend);
+    </script>
+  </body>
+</html>
