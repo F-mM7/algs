@@ -24,22 +24,37 @@
 import { Type, Masks, Colors } from "sr-puzzlegen";
 import type { PuzzleGroup } from "./types";
 
-// megaminx 配色: 白を底面(d)に、最終層(上面 U)はグレー。
-// 他10面は puzzle-gen の既定のまま（scheme はシャローマージのため全面指定が必要）。
+// megaminx 配色: 白を底面に置いて最終層（上面）を解く向き。
+// puzzle-gen 既定（白=上）を左右水平軸まわりに 180° 反転させた白底配色
+// （最終層 U=白の対面のグレー、周囲も底面まわりの色に揃う。U↔d/F↔b/L↔bl/R↔br/dl↔BL/dr↔BR）。
+// MEGAMINX_TOP の描画に効くのは U/F/R/L/BR/BL の6面だが、
+// scheme はシャローマージのため全12面を指定する。
 const megaminxScheme = {
-  U: Colors.GREY, // 最終層（上面）: 白 → グレー
-  F: Colors.RED,
-  R: Colors.BLUE,
-  dr: Colors.PINK,
-  dl: Colors.LIGHT_YELLOW,
-  L: Colors.GREEN,
-  d: Colors.WHITE, // 底面: グレー → 白
-  br: Colors.LIGHT_GREEN,
-  BR: Colors.YELLOW,
-  BL: Colors.PURPLE,
-  bl: Colors.DARK_BLUE,
-  b: Colors.ORANGE,
+  U: Colors.GREY, // 最終層（上面）= 白の対面
+  F: Colors.ORANGE,
+  R: Colors.LIGHT_GREEN,
+  dr: Colors.YELLOW,
+  dl: Colors.PURPLE,
+  L: Colors.DARK_BLUE,
+  d: Colors.WHITE, // 底面 = 白
+  br: Colors.BLUE,
+  BR: Colors.PINK,
+  BL: Colors.LIGHT_YELLOW,
+  bl: Colors.GREEN,
+  b: Colors.RED,
 };
+
+// 最終層マスク: 伏せたステッカーは puzzle-gen の「マスク色」#404040 になり、
+// 「最終層色」#808080（= Colors.GREY, U 面）とは別トーンで区別される。
+// 方針: 各段階を解く直前の状態を表示し、「まだ未着手の後段階要素」だけを伏せる。
+//   U 面 index: 0=中心 / 1,3,5,7,9=エッジ / 2,4,6,8,10=コーナー。
+//   側面(F/R/L/BR/BL)の可視 index — エッジ: F3 R1 L5 BR7 BL9 / コーナー: F2,4 R2,10 L4,6 BR6,8 BL8,10。
+// EOLL: エッジ向きを見る。U 面コーナー(CO)＋側面(EP,CP)を伏せ、U 面エッジのみ表示。
+const maskEOLL = { ...Masks.MEGA_3.OLL, U: [2, 4, 6, 8, 10] };
+// COLL: コーナー向きを見る。側面(EP,CP)を全て伏せ U 面は全表示 → ステージで Masks.MEGA_3.OLL を使用。
+// EPLL: エッジ位置を見る。側面コーナー(CP)のみ伏せ、U 面＋側面エッジを表示（位置は側面エッジで判別）。
+const maskEPLL = { F: [2, 4], R: [2, 10], L: [4, 6], BR: [6, 8], BL: [8, 10] };
+// CPLL: コーナー位置を見る。未着手の後段階要素がないためマスクなし（全表示）。
 
 export const puzzleGroups: PuzzleGroup[] = [
   {
@@ -103,12 +118,15 @@ export const puzzleGroups: PuzzleGroup[] = [
     id: "megaminx",
     name: "Megaminx",
     stages: [
-      // megaminx は素の D 単独は不可。R / U 系（R++ / D-- 等の Pochmann 記法も可）
+      // megaminx は素の D 単独は不可。R / U 系（R++ / D-- 等の Pochmann 記法も可）。
+      // solve 順: EOLL → COLL → EPLL → CPLL。各段階は認識に不要なステッカーを
+      // 「マスク色」#404040 に伏せる（U 面の「最終層色」#808080 と区別される）。
       {
         id: "eoll",
         name: "EOLL",
         type: Type.MEGAMINX_TOP,
         scheme: megaminxScheme,
+        mask: maskEOLL,
         algs: [
           { name: "F sexy F'", alg: "F R U R' U' F'" },
           // ↓ ここに自分の EOLL を追加
@@ -119,6 +137,7 @@ export const puzzleGroups: PuzzleGroup[] = [
         name: "COLL",
         type: Type.MEGAMINX_TOP,
         scheme: megaminxScheme,
+        mask: Masks.MEGA_3.OLL,
         algs: [
           { name: "Sune", alg: "R U R' U R U2 R'" },
           // ↓ ここに自分の COLL を追加
@@ -129,10 +148,19 @@ export const puzzleGroups: PuzzleGroup[] = [
         name: "EPLL",
         type: Type.MEGAMINX_TOP,
         scheme: megaminxScheme,
+        mask: maskEPLL,
         algs: [
           { name: "J perm", alg: "R U R' F' R U R' U' R' F R2 U' R' U'" },
           // ↓ ここに自分の EPLL を追加
         ],
+      },
+      {
+        id: "cpll",
+        name: "CPLL",
+        type: Type.MEGAMINX_TOP,
+        scheme: megaminxScheme,
+        // コーナー位置の段階。未着手の後段階がないためマスクなし（全表示）。手順は登録しない。
+        algs: [],
       },
     ],
   },
