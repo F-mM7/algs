@@ -143,6 +143,9 @@ export const puzzleGroups: PuzzleGroup[] = [
           { name: "Anti-sune", alg: "R U2 R' U' R U' R'" },
           { name: "Mirror Sune", alg: "R' U' R U' R' U2 R" },
           { name: "Mirror Anti-sune", alg: "R' U2' R U R' U R" },
+          { name: "Double Sune", alg: "R U R' U R U' R' U R U2' R'" },
+          { name: "Anti Double Sune", alg: "R U2 R' U' R U R' U' R U' R'" },
+          { name: "Triple Sune", alg: "R U R' U R U' R' U R U' R' U R U2' R'" },
           // ↓ ここに自分の COLL を追加
         ],
       },
