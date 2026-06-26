@@ -140,6 +140,9 @@ export const puzzleGroups: PuzzleGroup[] = [
         mask: Masks.MEGA_3.OLL,
         algs: [
           { name: "Sune", alg: "R U R' U R U2' R'" },
+          { name: "Anti-sune", alg: "R U2 R' U' R U' R'" },
+          { name: "Mirror Sune", alg: "R' U' R U' R' U2 R" },
+          { name: "Mirror Anti-sune", alg: "R' U2' R U R' U R" },
           // ↓ ここに自分の COLL を追加
         ],
       },
