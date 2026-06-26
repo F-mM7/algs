@@ -139,7 +139,7 @@ export const puzzleGroups: PuzzleGroup[] = [
         scheme: megaminxScheme,
         mask: Masks.MEGA_3.OLL,
         algs: [
-          { name: "Sune", alg: "R U R' U R U2 R'" },
+          { name: "Sune", alg: "R U R' U R U2' R'" },
           // ↓ ここに自分の COLL を追加
         ],
       },
